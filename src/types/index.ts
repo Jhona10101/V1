@@ -1,5 +1,5 @@
 // Roles de Usuario
-export type UserRole = 'admin' | 'trainer' | 'client';
+export type UserRole = 'admin' | 'coach' | 'client';
 
 // Interfaz Base para todos los usuarios
 export interface BaseUser {
@@ -17,14 +17,14 @@ export interface Admin extends BaseUser {
   gymId: string;
 }
 
-export interface Trainer extends BaseUser {
-  role: 'trainer';
+export interface Coach extends BaseUser {
+  role: 'coach';
   assignedClientIds: string[]; // Array de UIDs de clientes asignados
 }
 
 export interface Client extends BaseUser {
   role: 'client';
-  assignedTrainerId: string; // UID del entrenador asignado
+  assignedCoachId: string; // UID del entrenador asignado
   anthropometricDataId: string;
   oneRmSheetId: string;
   personalSheetId: string;

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import { Admin, Trainer, Client } from '@/types';
+import { Admin, Coach, Client } from '@/types';
 
-type UserProfile = Admin | Trainer | Client;
+type UserProfile = Admin | Coach | Client;
 
 interface UserState {
   user: UserProfile | null;
