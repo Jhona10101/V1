@@ -1,24 +1,27 @@
 import { useAuthListener } from "@/hooks/useAuthListener";
 import { useUserStore } from "@/store/user.store";
-import { useEffect } from "react";
+import { AppRouter } from "./Router"; // Importamos nuestro router
 
-// Placeholder para tus rutas y componentes
-const AuthenticatedApp = () => <div>Dashboard del Gimnasio</div>;
-const UnauthenticatedApp = () => <div>Página de Login</div>;
-const SplashScreen = () => <div className="h-screen w-full flex items-center justify-center">Cargando...</div>
+const SplashScreen = () => (
+  <div className="flex h-screen w-full items-center justify-center bg-slate-950 text-white">
+    <div className="text-2xl font-bold tracking-tighter">GYM ULTRA</div>
+  </div>
+);
 
-function App() {      
-  // Este hook personalizado se encargará de escuchar los cambios de auth
-  // y actualizar nuestro store de Zustand.
+function App() {
+  // El hook inicializa la escucha de estado de autenticación
   useAuthListener();
   
-  const { user, isLoading } = useUserStore();
+  const { isLoading } = useUserStore();
 
+  // Mientras se verifica el estado de auth con Firebase, mostramos un splash screen.
+  // Esto previene un parpadeo de la pantalla de login antes de ser redirigido.
   if (isLoading) {
     return <SplashScreen />;
   }
   
-  return user ? <AuthenticatedApp /> : <UnauthenticatedApp />;
+  // Una vez que la carga inicial termina, el Router se encarga de todo.
+  return <AppRouter />;
 }
 
 export default App;
