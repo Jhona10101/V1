@@ -1,4 +1,4 @@
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, setDoc, updateDoc, writeBatch, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Admin, Coach, Client } from '@/types';
 
@@ -76,5 +76,91 @@ export const getAllUsers = async (): Promise<(Admin | Coach | Client)[]> => {
   } catch (error) {
     console.error("Error fetching all users:", error);
     return [];
+  }
+};
+
+/**
+ * Actualiza los datos de un usuario (Datos Personales).
+ */
+export const updateUser = async (uid: string, data: Partial<Admin | Coach | Client>) => {
+  try {
+    const userRef = doc(db, 'users', uid);
+    await updateDoc(userRef, data);
+    return true;
+  } catch (error) {
+    console.error("Error updating user:", error);
+    throw error;
+  }
+};
+
+/**
+ * Asigna un cliente a un entrenador.
+ * Actualiza ambos documentos en una sola operación (batch).
+ */
+export const assignClientToCoach = async (coachId: string, clientId: string) => {
+  try {
+    const batch = writeBatch(db);
+    
+    // 1. Actualizar el cliente: asignar el ID del coach
+    const clientRef = doc(db, 'users', clientId);
+    batch.update(clientRef, { assignedCoachId: coachId });
+
+    // 2. Actualizar el coach: agregar el ID del cliente al array
+    const coachRef = doc(db, 'users', coachId);
+    batch.update(coachRef, { assignedClientIds: arrayUnion(clientId) });
+
+    await batch.commit();
+    return true;
+  } catch (error) {
+    console.error("Error assigning client:", error);
+    throw error;
+  }
+};
+
+/**
+ * Elimina la asignación de un cliente a un entrenador.
+ */
+export const removeClientFromCoach = async (coachId: string, clientId: string) => {
+  try {
+    const batch = writeBatch(db);
+    
+    const clientRef = doc(db, 'users', clientId);
+    batch.update(clientRef, { assignedCoachId: '' });
+
+    const coachRef = doc(db, 'users', coachId);
+    batch.update(coachRef, { assignedClientIds: arrayRemove(clientId) });
+
+    await batch.commit();
+    return true;
+  } catch (error) {
+    console.error("Error removing client:", error);
+    throw error;
+  }
+};
+
+/**
+ * Obtiene una ficha específica (antropometría o 1rm) de una subcolección del usuario.
+ */
+export const getClientSheet = async (clientId: string, sheetName: 'anthropometry' | 'onerm') => {
+  try {
+    const sheetRef = doc(db, 'users', clientId, 'sheets', sheetName);
+    const sheetSnap = await getDoc(sheetRef);
+    return sheetSnap.exists() ? sheetSnap.data() : null;
+  } catch (error) {
+    console.error(`Error fetching ${sheetName}:`, error);
+    return null;
+  }
+};
+
+/**
+ * Guarda o actualiza una ficha específica.
+ */
+export const saveClientSheet = async (clientId: string, sheetName: 'anthropometry' | 'onerm', data: any) => {
+  try {
+    const sheetRef = doc(db, 'users', clientId, 'sheets', sheetName);
+    await setDoc(sheetRef, { ...data, updatedAt: new Date().toISOString() }, { merge: true });
+  } catch (error) {
+    console.error(`Error saving ${sheetName}:`, error);
+    throw error;
   }
 };

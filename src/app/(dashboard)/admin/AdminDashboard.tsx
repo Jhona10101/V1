@@ -2,21 +2,50 @@ import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { getAllUsers } from '@/services/api/firestore';
 import { Admin, Coach, Client } from '@/types';
-import { Users, Dumbbell, TrendingUp, Search, UserCheck, Shield } from 'lucide-react';
+import { Users, Dumbbell, TrendingUp, Search, Shield, ClipboardList, Database } from 'lucide-react';
+import { ClientDetail } from './ClientDetail';
+import { CoachDetail } from './CoachDetail';
+import { ClientPhysicalTests } from './ClientPhysicalTests';
+import { ExerciseLibrary } from './ExerciseLibrary';
 
 export const AdminDashboard = () => {
   const [users, setUsers] = useState<(Admin | Coach | Client)[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [selectedCoach, setSelectedCoach] = useState<Coach | null>(null);
+  const [selectedClientForTests, setSelectedClientForTests] = useState<Client | null>(null);
+  const [showExerciseLib, setShowExerciseLib] = useState(false);
+
+  const fetchData = async () => {
+    const data = await getAllUsers();
+    setUsers(data);
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      const data = await getAllUsers();
-      setUsers(data);
-      setLoading(false);
-    };
     fetchData();
   }, []);
+
+  // Si hay un cliente seleccionado, mostramos su detalle
+  if (selectedClient) {
+    return <ClientDetail client={selectedClient} allUsers={users} onBack={() => setSelectedClient(null)} onUpdate={fetchData} />;
+  }
+
+  // Si hay un coach seleccionado, mostramos su detalle
+  if (selectedCoach) {
+    return <CoachDetail coach={selectedCoach} onBack={() => setSelectedCoach(null)} onUpdate={fetchData} />;
+  }
+
+  // Si hay un cliente seleccionado para tests físicos
+  if (selectedClientForTests) {
+    return <ClientPhysicalTests client={selectedClientForTests} onBack={() => setSelectedClientForTests(null)} />;
+  }
+
+  // Si se selecciona la biblioteca de ejercicios
+  if (showExerciseLib) {
+    return <ExerciseLibrary onBack={() => setShowExerciseLib(false)} />;
+  }
 
   // Filtrado y Separación de Roles
   const filteredUsers = users.filter(u => 
@@ -85,6 +114,17 @@ export const AdminDashboard = () => {
             </div>
           </div>
         </Card>
+        <Card onClick={() => setShowExerciseLib(true)} className="cursor-pointer hover:border-emerald-500/50 transition-all group">
+          <div className="flex items-start justify-between">
+            <div>
+              <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider group-hover:text-emerald-400">Base de Datos</h3>
+              <p className="text-lg font-bold text-white mt-2">Ejercicios y Máquinas</p>
+            </div>
+            <div className="p-3 bg-slate-800 rounded-lg group-hover:bg-emerald-500/20 transition-colors">
+              <Database className="w-6 h-6 text-slate-400 group-hover:text-emerald-500" />
+            </div>
+          </div>
+        </Card>
       </div>
 
       {/* Sección de Entrenadores */}
@@ -95,7 +135,11 @@ export const AdminDashboard = () => {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {coaches.map(coach => (
-            <Card key={coach.uid} className="flex items-center gap-4 hover:border-emerald-500/50 cursor-pointer group">
+            <Card 
+              key={coach.uid} 
+              onClick={() => setSelectedCoach(coach)}
+              className="flex items-center gap-4 hover:border-emerald-500/50 cursor-pointer group"
+            >
               <div className="w-12 h-12 rounded-full bg-emerald-900/30 flex items-center justify-center text-emerald-400 font-bold text-lg border border-emerald-500/20">
                 {coach.firstName[0]}{coach.lastName[0]}
               </div>
@@ -119,7 +163,11 @@ export const AdminDashboard = () => {
         <div className="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden">
           <div className="grid grid-cols-1 divide-y divide-slate-800">
             {clients.map(client => (
-              <div key={client.uid} className="p-4 flex items-center justify-between hover:bg-slate-800/50 transition-colors">
+              <div 
+                key={client.uid} 
+                onClick={() => setSelectedClient(client)}
+                className="p-4 flex items-center justify-between hover:bg-slate-800/50 transition-colors cursor-pointer group"
+              >
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-full bg-blue-900/30 flex items-center justify-center text-blue-400 font-bold text-sm border border-blue-500/20">
                     {client.firstName[0]}{client.lastName[0]}
@@ -139,7 +187,7 @@ export const AdminDashboard = () => {
                       }
                     </p>
                   </div>
-                  <button className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition-colors">
+                  <button className="p-2 bg-slate-800 group-hover:bg-blue-600 rounded-lg text-slate-400 group-hover:text-white transition-all">
                     <TrendingUp className="w-4 h-4" />
                   </button>
                 </div>
