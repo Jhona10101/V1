@@ -58,3 +58,23 @@ export const getAssignedClients = async (coachId: string): Promise<Client[]> => 
     return []; 
   }
 };
+
+/**
+ * Obtiene todos los usuarios registrados en la plataforma (Admin, Coach, Client).
+ * Útil para el dashboard de administrador.
+ */
+export const getAllUsers = async (): Promise<(Admin | Coach | Client)[]> => {
+  try {
+    const usersRef = collection(db, 'users');
+    const querySnapshot = await getDocs(usersRef);
+    const users: (Admin | Coach | Client)[] = [];
+    
+    querySnapshot.forEach((doc) => {
+      users.push(doc.data() as (Admin | Coach | Client));
+    });
+    return users;
+  } catch (error) {
+    console.error("Error fetching all users:", error);
+    return [];
+  }
+};
