@@ -4,12 +4,12 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: "AIzaSyAlJw-gJTQISBTG3fU9xwfAZYplo8Esf2Y",
+  authDomain: "v-metric.firebaseapp.com",
+  projectId: "v-metric",
+  storageBucket: "v-metric.firebasestorage.app",
+  messagingSenderId: "257962379714",
+  appId: "1:257962379714:web:429b2e9eb28f1914226e5b"
 };
 
 // Inicialización segura (evita re-inicializar en HMR)

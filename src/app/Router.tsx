@@ -1,56 +1,42 @@
-import { createBrowserRouter, Navigate, Outlet, RouterProvider } from "react-router-dom";
-import { useUserStore } from "@/store/user.store";
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useUserStore } from '@/store/user.store';
+import { DashboardLayout } from './(dashboard)/_layout/DashboardLayout';
+import { AdminDashboard } from './(dashboard)/admin/AdminDashboard';
+import { CoachDashboard } from './(dashboard)/coach/CoachDashboard';
+import { ClientDashboard } from './(dashboard)/client/ClientDashboard';
 
-// --- Páginas ---
-import { LoginPage } from "@/app/(auth)/LoginPage";
-import { DashboardLayout } from "@/app/(dashboard)/_layout/DashboardLayout";
-import { DashboardPage } from "@/app/(dashboard)/DashboardPage";
-// Placeholder para otras páginas
-const ClientsPage = () => <div>Gestión de Clientes</div>; 
-
-/**
- * Componente de Ruta Protegida:
- * - Si el usuario está autenticado, renderiza el contenido de la ruta (a través de <Outlet />).
- * - Si no, lo redirige a la página de login.
- */
-const ProtectedRoute = () => {
-  const { user } = useUserStore();
-  
-  if (!user) {
-    return <Navigate to="/" replace />;
-  }
-
-  return <Outlet />;
-};
-
-
-const router = createBrowserRouter([
-  {
-    path: "/",
-    element: <LoginPage />,
-  },
-  {
-    path: "/dashboard",
-    element: <ProtectedRoute />, // El layout y sus hijos están protegidos
-    children: [
-        {
-            element: <DashboardLayout />, // Layout con sidebar/header
-            children: [
-                {
-                    index: true, // Ruta /dashboard
-                    element: <DashboardPage />,
-                },
-                {
-                    path: "clients", // Ruta /dashboard/clients
-                    element: <ClientsPage />,
-                }
-                // ... aquí irían más rutas del dashboard
-            ]
-        }
-    ],
-  },
-]);
+// Componentes temporales para probar la navegación
+const Login = () => <div className="p-10"><h1>Página de Login</h1></div>;
 
 export const AppRouter = () => {
-    return <RouterProvider router={router} />;
-}
+  const { user } = useUserStore();
+
+  // Función auxiliar para renderizar el dashboard correcto según el rol
+  const getDashboardByRole = () => {
+    if (!user) return <Navigate to="/login" />;
+    
+    switch (user.role) {
+      case 'admin': return <AdminDashboard />;
+      case 'coach': return <CoachDashboard />;
+      case 'client': return <ClientDashboard />;
+      default: return <div>Rol desconocido</div>;
+    }
+  };
+
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Rutas Públicas */}
+        <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
+
+        {/* Rutas Privadas (Dashboard) */}
+        <Route path="/" element={
+          user ? <DashboardLayout>{getDashboardByRole()}</DashboardLayout> : <Navigate to="/login" />
+        } />
+
+        {/* Redirección por defecto */}
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
+    </BrowserRouter>
+  );
+};
