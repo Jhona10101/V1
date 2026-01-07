@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
-import { Search, Plus, Edit2, Trash2, Wrench, Dumbbell, Save, X, AlertTriangle, CheckCircle, Calendar, ChevronLeft, ChevronRight, Clock, Zap, Wind } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, Wrench, Dumbbell, Save, X, AlertTriangle, CheckCircle, Calendar, ChevronLeft, ChevronRight, Wind } from 'lucide-react';
 import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { CardioExerciseForm } from '@/features/cardio/components/CardioExerciseForm';

@@ -249,109 +249,79 @@ export const deleteAnthropometryRecord = async (clientId: string, recordId: stri
   }
 };
 
-// --- CARDIO EXERCISE HISTORY ---
+// --- CARDIO SESSIONS WITH CYCLES ---
+
+interface CycleFeedback {
+  cycleId: number;
+  plannedIntensity: number;
+  plannedTime: number;
+  intensityMet: boolean;
+  timeCompleted: boolean;
+}
 
 /**
- * Guarda una sesión de ejercicio cardiovascular realizada por un cliente.
+ * Guarda una sesión completa de cardio, incluyendo el feedback detallado de cada ciclo.
+ * @param clientId El ID del cliente que realizó la sesión.
+ * @param coachId El ID del entrenador asignado al cliente.
+ * @param exercise Un objeto con el ID y el nombre del ejercicio.
+ * @param feedback Un array con el feedback de cada ciclo completado.
+ * @returns El ID de la sesión guardada.
  */
-export const saveCardioExerciseSession = async (clientId: string, coachId: string, session: {
-  exerciseId: string;
-  exerciseName: string;
-  plannedDuration: number;
-  actualDuration: number;
-  plannedIntensity: string | number;
-  actualIntensity: string | number;
-  notes?: string;
-}): Promise<string> => {
+export const saveCardioSessionWithCycles = async (
+  clientId: string,
+  coachId: string,
+  exercise: { id: string; name: string },
+  feedback: CycleFeedback[]
+): Promise<string> => {
   try {
-    const sessionId = doc(collection(db, 'users', clientId, 'cardioHistory')).id;
+    const sessionCollectionRef = collection(db, 'users', clientId, 'cardioSessions');
+    const newSessionRef = doc(sessionCollectionRef);
+    
     const sessionData = {
-      ...session,
+      id: newSessionRef.id,
       clientId,
       coachId,
-      date: new Date().toISOString().split('T')[0],
-      time: new Date().toISOString().split('T')[1],
-      createdAt: new Date().toISOString(),
+      exerciseId: exercise.id,
+      exerciseName: exercise.name,
+      createdAt: new Date(),
+      cycleFeedback: feedback,
     };
 
-    await setDoc(doc(db, 'users', clientId, 'cardioHistory', sessionId), sessionData);
-    return sessionId;
+    await setDoc(newSessionRef, sessionData);
+    
+    return newSessionRef.id;
   } catch (error) {
-    console.error("Error saving cardio exercise session:", error);
+    console.error("Error saving cardio session with cycles:", error);
     throw error;
   }
 };
 
+// Backwards-compatible alias: older code imports `saveCardioExerciseSession`.
+export const saveCardioExerciseSession = saveCardioSessionWithCycles;
+
 /**
- * Obtiene el historial de ejercicios cardiovasculares de un cliente.
+ * Obtiene el historial de sesiones de cardio (con ciclos) de un cliente.
+ * @param clientId El ID del cliente.
+ * @returns Una promesa que se resuelve con un array de sesiones de cardio.
  */
-export const getCardioExerciseHistory = async (clientId: string): Promise<any[]> => {
+export const getCardioSessionsHistory = async (clientId: string): Promise<any[]> => {
   try {
-    const historyRef = collection(db, 'users', clientId, 'cardioHistory');
+    const historyRef = collection(db, 'users', clientId, 'cardioSessions');
     const q = query(historyRef, orderBy('createdAt', 'desc'), limit(50));
     const querySnapshot = await getDocs(q);
     
     const sessions: any[] = [];
     querySnapshot.forEach((doc) => {
-      sessions.push({ id: doc.id, ...doc.data() });
+      sessions.push(doc.data());
     });
     
     return sessions;
   } catch (error) {
-    console.error("Error fetching cardio exercise history:", error);
+    console.error("Error fetching cardio sessions history:", error);
     return [];
   }
 };
 
-/**
- * Agrega retroalimentación del coach a una sesión de ejercicio cardiovascular.
- */
-export const addCardioFeedback = async (clientId: string, sessionId: string, feedback: string): Promise<void> => {
-  try {
-    const sessionRef = doc(db, 'users', clientId, 'cardioHistory', sessionId);
-    await updateDoc(sessionRef, { 
-      feedback,
-      feedbackUpdatedAt: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error("Error adding cardio feedback:", error);
-    throw error;
-  }
-};
-
-/**
- * Obtiene estadísticas de cardio de un cliente (últimos 30 días).
- */
-export const getCardioStats = async (clientId: string): Promise<{
-  totalSessions: number;
-  totalDuration: number;
-  avgIntensity: string;
-  lastSession?: any;
-}> => {
-  try {
-    const sessions = await getCardioExerciseHistory(clientId);
-    
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
-    const recentSessions = sessions.filter(s => 
-      new Date(s.createdAt) >= thirtyDaysAgo
-    );
-    
-    const totalDuration = recentSessions.reduce((sum, s) => sum + (s.actualDuration || 0), 0);
-    const lastSession = recentSessions[0] || null;
-    
-    return {
-      totalSessions: recentSessions.length,
-      totalDuration,
-      avgIntensity: recentSessions.length > 0 ? 'Moderada' : 'N/A',
-      lastSession
-    };
-  } catch (error) {
-    console.error("Error getting cardio stats:", error);
-    return { totalSessions: 0, totalDuration: 0, avgIntensity: 'N/A' };
-  }
-};
 
 // ===== FUNCIONES PARA 1RM =====
 

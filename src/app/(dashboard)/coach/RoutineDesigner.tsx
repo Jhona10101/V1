@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { Client } from '@/types';
 import { MOCK_EXERCISE_DB, ExerciseMachine } from '../admin/ExerciseLibrary';
 import { Card } from '@/components/ui/Card';
-import { Calendar, Plus, Save, Trash2, ArrowLeft, CheckCircle, AlertTriangle, Dumbbell, Wind } from 'lucide-react';
-import { doc, setDoc, collection, onSnapshot, deleteDoc, getDocs, query, where } from 'firebase/firestore';
+import { Calendar, Plus, Save, Trash2, ArrowLeft, CheckCircle, AlertTriangle, Dumbbell, Wind, Play } from 'lucide-react';
+import { saveCardioSessionWithCycles } from '@/services/api/firestore';
+import { doc, setDoc, collection, onSnapshot, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { auth } from '@/lib/firebase';
 import { getOneRmRecords, getClientSheet } from '@/services/api/firestore';
@@ -122,56 +123,104 @@ const FORCE_TYPES = [
   }
 ];
 
-const CardioChart = ({ cycles }: { cycles: CardioCycle[] }) => {
-  const width = 500;
-  const height = 128;
-  const padding = 20;
+const CyclePlayer = ({
+  cycles,
+  exercise,
+  onFinish
+}: {
+  cycles: CardioCycle[];
+  exercise: RoutineExercise;
+  onFinish: (result: any) => void;
+}) => {
+  const [index, setIndex] = useState(0);
+  const [isRunning, setIsRunning] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const [feedbacks, setFeedbacks] = useState<any[]>([]);
+  const [showCycleFeedback, setShowCycleFeedback] = useState(false);
+  const current = cycles[index];
 
-  if (!cycles || cycles.length === 0) {
-    return null;
-  }
-
-  const totalTime = cycles.reduce((sum, cycle) => sum + cycle.time, 0);
-  
-  let points = `M0,${height} `;
-  let linePoints = `M0,${height - (cycles[0].intensity / 100 * (height - padding))} `;
-  let currentTime = 0;
-
-  cycles.forEach((cycle, index) => {
-    const startX = (currentTime / totalTime) * width;
-    const endX = ((currentTime + cycle.time) / totalTime) * width;
-    const y = height - (cycle.intensity / 100 * (height - padding));
-    
-    // For area path
-    points += `L${startX},${y} L${endX},${y} `;
-    
-    // For line path
-    if (index > 0) {
-      const prevY = height - (cycles[index-1].intensity / 100 * (height - padding));
-      linePoints += `L${startX},${prevY} L${startX},${y} `;
+  // timer
+  useEffect(() => {
+    let t: NodeJS.Timeout | undefined;
+    if (isRunning && current) {
+      t = setInterval(() => setElapsed(e => e + 1), 1000);
     }
-    linePoints += `L${endX},${y} `;
+    return () => { if (t) clearInterval(t); };
+  }, [isRunning, current]);
 
-    currentTime += cycle.time;
-  });
+  useEffect(() => {
+    if (!current) return;
+    // reset when cycle changes
+    setElapsed(0);
+    setIsRunning(false);
+    setShowCycleFeedback(false);
+  }, [index]);
 
-  points += `L${width},${height} Z`;
+  const finishCycle = () => {
+    setIsRunning(false);
+    setShowCycleFeedback(true);
+  };
+
+  const saveCycleFeedback = (data: { usedIntensity: string; completedSeconds: number; completedFull: boolean }) => {
+    const entry = { cycleId: current.id, plannedSeconds: current.time, ...data };
+    setFeedbacks(f => [...f, entry]);
+    // advance or finish
+    if (index < cycles.length - 1) {
+      setIndex(i => i + 1);
+    } else {
+      // finished all cycles - persist session
+      const plannedDuration = cycles.reduce((s,c) => s + (c.time||0), 0);
+      const actualDuration = [...feedbacks, entry].reduce((s:any, f:any) => s + (f.completedSeconds||0), 0);
+      const plannedIntensity = 'mixed';
+      const avgIntensity = 'N/A';
+
+      const sessionPayload = {
+        exerciseId: exercise.exerciseId,
+        exerciseName: exercise.name,
+        plannedDuration: Math.round(plannedDuration/60),
+        actualDuration: Math.round(actualDuration/60),
+        plannedIntensity,
+        actualIntensity: avgIntensity,
+        cycles: [...feedbacks, entry]
+      };
+
+      onFinish(sessionPayload);
+    }
+  };
+
+  if (!cycles || cycles.length === 0) return null;
 
   return (
-    <div className="mt-4">
-      <h4 className="text-xs text-slate-300 uppercase font-bold block mb-2">Cardiograma de la Sesión</h4>
-      <div className="bg-slate-900/50 p-2 rounded-lg border border-slate-800">
-        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-32" preserveAspectRatio="none">
-          <defs>
-            <linearGradient id="cardioGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="rgba(20, 184, 166, 0.4)" />
-              <stop offset="100%" stopColor="rgba(20, 184, 166, 0)" />
-            </linearGradient>
-          </defs>
-          <path d={points} fill="url(#cardioGradient)" />
-          <path d={linePoints} fill="none" strokeWidth="2" stroke="rgba(20, 184, 166, 1)" />
-        </svg>
-      </div>
+    <div className="mt-4 space-y-4">
+      <Card>
+        <div className="flex items-center justify-between">
+          <div>
+            <h4 className="text-sm font-bold text-white">Reproduciendo Ciclos: {exercise.name}</h4>
+            <p className="text-xs text-slate-400">Ciclo {index + 1} de {cycles.length} — Nivel {current.level} — Duración {Math.round(current.time/60)} min</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setIsRunning(r => !r)} className={`px-3 py-1 rounded-lg font-medium ${isRunning ? 'bg-red-600' : 'bg-emerald-600'} text-white`}>{isRunning ? 'Pausar' : 'Iniciar'}</button>
+            <button onClick={() => { setIsRunning(false); setElapsed(current.time); finishCycle(); }} className="px-3 py-1 rounded-lg bg-slate-700 text-white">Terminar</button>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <div className="text-4xl font-mono text-emerald-400">{String(Math.floor(elapsed/60)).padStart(2,'0')}:{String(elapsed%60).padStart(2,'0')}</div>
+          <div className="w-full h-3 bg-slate-800 rounded-full mt-3">
+            <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400" style={{ width: `${Math.min((elapsed/current.time)*100,100)}%` }} />
+          </div>
+        </div>
+
+        {showCycleFeedback && (
+          <div className="mt-4 space-y-3">
+            <label className="text-sm font-bold text-slate-400">¿Usaste la intensidad indicada?</label>
+            <div className="flex gap-2">
+              <button onClick={() => saveCycleFeedback({ usedIntensity: 'Sí', completedSeconds: Math.min(elapsed, current.time), completedFull: elapsed >= current.time })} className="px-3 py-2 bg-emerald-600 text-white rounded">Sí</button>
+              <button onClick={() => saveCycleFeedback({ usedIntensity: 'No', completedSeconds: Math.min(elapsed, current.time), completedFull: elapsed >= current.time })} className="px-3 py-2 bg-yellow-600 text-white rounded">No</button>
+            </div>
+          </div>
+        )}
+      </Card>
     </div>
   );
 };
@@ -205,6 +254,8 @@ export const RoutineDesigner = ({ client, onBack }: RoutineDesignerProps) => {
   const [physicalTestsData, setPhysicalTestsData] = useState<any>({});
   const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null);
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; type: 'exercise' | 'routine'; id?: string; title?: string } | null>(null);
+  const [playingExercise, setPlayingExercise] = useState<RoutineExercise | null>(null);
+  const [, setIsSubmittingSession] = useState(false);
 
   const heartRateZones = useHeartRateZones(physicalTestsData.fcm, physicalTestsData.restingHeartRate);
 
@@ -737,6 +788,9 @@ export const RoutineDesigner = ({ client, onBack }: RoutineDesignerProps) => {
                       {oneRmMap[ex.exerciseId]?.oneRmKg ? (
                         <div className="text-xs bg-emerald-900/30 border border-emerald-500/30 text-emerald-300 px-2 py-1 rounded">1RM {oneRmMap[ex.exerciseId].oneRmKg}kg</div>
                       ) : null}
+                      {ex.exerciseType === 'cardio' && (
+                        <button onClick={(e) => { e.stopPropagation(); setPlayingExercise(ex); }} title="Iniciar Cardio" className="text-slate-600 hover:text-emerald-400 transition-colors"><Play className="w-4 h-4" /></button>
+                      )}
                       <button onClick={(e) => { e.stopPropagation(); setDeleteModal({ isOpen: true, type: 'exercise', id: ex.id, title: ex.name }); }} className="text-slate-600 hover:text-red-400 transition-colors"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </div>
@@ -767,6 +821,30 @@ export const RoutineDesigner = ({ client, onBack }: RoutineDesignerProps) => {
                       </p>
                     );
                   })()}
+
+                  {/* Cycle player: when playingExercise is set to this ex, show player */}
+                  {playingExercise?.id === ex.id && ex.cardioCycles && ex.cardioCycles.length > 0 && (
+                    <CyclePlayer
+                      cycles={ex.cardioCycles}
+                      exercise={ex}
+                      onFinish={async (sessionPayload: any) => {
+                        try {
+                          setIsSubmittingSession(true);
+                          const coachId = auth.currentUser?.uid || 'unknown';
+                          const exerciseData = { id: sessionPayload.exerciseId, name: sessionPayload.exerciseName };
+                          const feedbackData = sessionPayload.cycles; 
+                          await saveCardioSessionWithCycles(client.uid, coachId, exerciseData, feedbackData);
+                          setNotification({ type: 'success', message: 'Sesión guardada y enviada al coach.' });
+                        } catch (err) {
+                          console.error('Error saving session', err);
+                          setNotification({ type: 'error', message: 'Error guardando la sesión.' });
+                        } finally {
+                          setIsSubmittingSession(false);
+                          setPlayingExercise(null);
+                        }
+                      }}
+                    />
+                  )}
 
                   {/* Selectores dependientes para ejercicios de fuerza */}
                   {ex.exerciseType === 'strength' && (
