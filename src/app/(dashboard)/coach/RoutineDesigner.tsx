@@ -969,9 +969,9 @@ export const RoutineDesigner = ({ client, onBack }: RoutineDesignerProps) => {
                     <div className="mt-4 space-y-4 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-900/50 border border-slate-700 rounded-lg p-4">
                       <div className="flex justify-between items-center mb-3">
                         <label className="text-xs text-slate-300 uppercase font-bold block">❤️ Diseñador de Cardio por Ciclos</label>
-                        <span className="text-sm text-slate-400">Duración Total: <span className="font-bold text-emerald-400">{totalCardioDurationMinutes} min</span></span>
+                        <span className="text-sm text-slate-400">Duración Total: <span className="font-bold text-emerald-400">{Math.round(((ex.cardioCycles?.reduce((s,c) => s + (c.time || 0), 0)) || 0) / 60)} min</span></span>
                       </div>
-                      <button 
+                        <button 
                           onClick={() => addCardioCycle(ex.id)}
                           disabled={isPastWeek || heartRateZones.length === 0}
                           className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-medium flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -979,7 +979,6 @@ export const RoutineDesigner = ({ client, onBack }: RoutineDesignerProps) => {
                         >
                           <Plus className="w-3 h-3" /> Añadir Ciclo
                         </button>
-                      </div>
                       
                       {(!ex.cardioCycles || ex.cardioCycles.length === 0) ? (
                         <div className="p-3 bg-slate-800/50 rounded-lg text-center text-sm text-slate-500 italic">
@@ -1032,20 +1031,13 @@ export const RoutineDesigner = ({ client, onBack }: RoutineDesignerProps) => {
                         <div className="mt-4">
                           <h4 className="text-xs text-slate-300 uppercase font-bold block mb-2">Cardiograma de la Sesión</h4>
                           <div className="flex items-end h-32 gap-1 bg-slate-900/50 p-2 rounded-lg border border-slate-800">
-                            {ex.cardI’ve completed the requested changes.
-
-**Summary of improvements:**
-
-*   **Upgraded "Radiography" Graph:** The simple bar chart has been replaced with a sleek, modern SVG area graph. It features a smooth gradient and a clear line tracing the intensity of the session, providing a much more professional "radiography" look.
-*   **Verified Data Integration:** I've re-confirmed that the cardio zone calculations correctly use the client's specific Maximum and Resting Heart Rate from their physical tests. The feature remains disabled with a clear message if that data is unavailable, ensuring correct functionality.
-
-The cardio cycle designer is now more powerful and visually appealing, aligning with your request for a functional and aesthetic upgrade.ocycle.map(cycle => (
+                              {ex.cardioCycles.map(cycle => (
                               <div 
                                 key={cycle.id}
                                 className="flex-1 bg-emerald-600 rounded-t-sm hover:bg-emerald-500 transition-colors relative group"
                                 style={{ height: `${cycle.intensity}%` }}
                               >
-                               <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-950 text-white text-xs rounded py-1 px-2 pointer-events-none">
+                                  <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-950 text-white text-xs rounded py-1 px-2 pointer-events-none">
                                   {cycle.level}: {cycle.time / 60}'
                                 </div>
                               </div>
