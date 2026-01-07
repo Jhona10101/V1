@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { getAllUsers } from '@/services/api/firestore';
 import { Client, Coach, Admin } from '@/types';
-import { Users, Dumbbell, Search, CalendarPlus, ArrowLeft, FileText, User, Mail, Shield, TrendingUp } from 'lucide-react';
+import { Users, Dumbbell, Search, CalendarPlus, ArrowLeft, FileText, Mail, Shield, TrendingUp } from 'lucide-react';
 // Importamos ClientDetail desde la carpeta de admin (asumiendo estructura)
 import { ClientDetail } from '../admin/ClientDetail';
 import { ClientTrainingProgress } from './ClientTrainingProgress';
+import { RoutineDesigner } from './RoutineDesigner';
 
 export const CoachDashboard = () => {
   const [clients, setClients] = useState<Client[]>([]);
@@ -92,7 +93,7 @@ export const CoachDashboard = () => {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-white group-hover:text-blue-400 transition-colors">Ver Ficha Técnica</h3>
-                <p className="text-sm text-slate-400 mt-1">Consulta los datos antropométricos, RM y tests físicos del atleta. (Solo lectura)</p>
+                <p className="text-sm text-slate-400 mt-1">Consulta y edita los datos antropométricos, RM y tests físicos del atleta.</p>
               </div>
             </button>
 
@@ -135,7 +136,8 @@ export const CoachDashboard = () => {
           client={selectedClient} 
           allUsers={allUsers}
           onBack={() => setViewMode('menu')} 
-          readOnly={true}
+          readOnly={false}
+          onUpdate={fetchData}
         />
       );
     }
@@ -149,28 +151,7 @@ export const CoachDashboard = () => {
 
     // VISTA 3: DISEÑADOR DE PLAN (Placeholder)
     if (viewMode === 'plan') {
-      return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-          <div className="flex items-center gap-4">
-            <button onClick={() => setViewMode('menu')} className="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <div>
-              <h1 className="text-2xl font-bold text-white">Diseñador de Rutinas</h1>
-              <p className="text-slate-400 text-sm">Planificación para {selectedClient.firstName}</p>
-            </div>
-          </div>
-          <Card className="p-12 flex flex-col items-center justify-center text-center space-y-4 border-dashed border-slate-700 bg-slate-900/30">
-            <div className="p-4 bg-slate-800 rounded-full">
-              <CalendarPlus className="w-8 h-8 text-slate-400" />
-            </div>
-            <div>
-              <h3 className="text-lg font-medium text-white">Módulo en Construcción</h3>
-              <p className="text-slate-500 max-w-md mt-2">Aquí aparecerá el formulario para crear rutinas semanales, seleccionar ejercicios y definir series/repeticiones.</p>
-            </div>
-          </Card>
-        </div>
-      );
+      return <RoutineDesigner client={selectedClient} onBack={() => setViewMode('menu')} />;
     }
   }
 

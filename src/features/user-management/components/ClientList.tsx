@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useUserStore } from '@/store/user.store';
 import { getAssignedClients } from '@/services/api/firestore';
 import { Client } from '@/types';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 
 // Componente para mostrar un solo cliente en la lista
 const ClientCard = ({ client }: { client: Client }) => (
@@ -28,8 +28,8 @@ export const ClientList = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Nos aseguramos de que el usuario exista y sea un entrenador.
-    if (user && user.role === 'trainer') {
+  // Nos aseguramos de que el usuario exista y sea un entrenador.
+  if (user && user.role === 'coach') {
       const fetchClients = async () => {
         setIsLoading(true);
         const assignedClients = await getAssignedClients(user.uid);

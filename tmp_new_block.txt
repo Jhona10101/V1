@@ -1,0 +1,7 @@
+  const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+  const [dbExercises, setDbExercises] = useState<ExerciseMachine[]>([]);
+  const [oneRmMap, setOneRmMap] = useState<{ [exerciseId: string]: any }>({});
+  const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null);
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; type: 'exercise' | 'routine'; id?: string; title?: string } | null>(null);

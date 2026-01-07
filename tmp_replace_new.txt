@@ -1,0 +1,6 @@
+import { Card } from '@/components/ui/Card';
+import { Calendar, Plus, Save, Trash2, ArrowLeft, CheckCircle, AlertTriangle, Dumbbell, Wind } from 'lucide-react';
+import { doc, setDoc, collection, onSnapshot, deleteDoc, getDocs, query, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { auth } from '@/lib/firebase';
+import { getOneRmRecords } from '@/services/api/firestore';

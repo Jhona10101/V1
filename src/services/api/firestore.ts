@@ -1,4 +1,4 @@
-import { doc, getDoc, collection, query, where, getDocs, setDoc, updateDoc, writeBatch, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, setDoc, updateDoc, writeBatch, arrayUnion, arrayRemove, orderBy, limit, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Admin, Coach, Client } from '@/types';
 
@@ -141,8 +141,19 @@ export const removeClientFromCoach = async (coachId: string, clientId: string) =
 /**
  * Obtiene una ficha específica (antropometría o 1rm) de una subcolección del usuario.
  */
-export const getClientSheet = async (clientId: string, sheetName: 'anthropometry' | 'onerm') => {
+export const getClientSheet = async (clientId: string, sheetName: 'anthropometry' | 'onerm' | 'physicalTests') => {
   try {
+    // Para antropometría, obtenemos el registro más reciente del historial para mostrarlo.
+    if (sheetName === 'anthropometry') {
+      const historyCollectionRef = collection(db, 'users', clientId, 'anthropometryHistory');
+      const q = query(historyCollectionRef, orderBy('savedAt', 'desc'), limit(1));
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        return querySnapshot.docs[0].data();
+      }
+      return null;
+    }
+    // Para otras fichas, se mantiene la lógica original.
     const sheetRef = doc(db, 'users', clientId, 'sheets', sheetName);
     const sheetSnap = await getDoc(sheetRef);
     return sheetSnap.exists() ? sheetSnap.data() : null;
@@ -153,14 +164,311 @@ export const getClientSheet = async (clientId: string, sheetName: 'anthropometry
 };
 
 /**
+ * Obtiene el historial completo de fichas de antropometría de un cliente.
+ */
+export const getAnthropometryHistory = async (clientId: string): Promise<any[]> => {
+  try {
+    const historyCollectionRef = collection(db, 'users', clientId, 'anthropometryHistory');
+    const q = query(historyCollectionRef, orderBy('savedAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => doc.data());
+  } catch (error) {
+    console.error(`Error fetching anthropometry history:`, error);
+    return [];
+  }
+};
+
+/**
  * Guarda o actualiza una ficha específica.
  */
-export const saveClientSheet = async (clientId: string, sheetName: 'anthropometry' | 'onerm', data: any) => {
+export const saveClientSheet = async (clientId: string, sheetName: 'anthropometry' | 'onerm' | 'physicalTests', data: any, savedBy?: { uid: string, name: string }) => {
   try {
-    const sheetRef = doc(db, 'users', clientId, 'sheets', sheetName);
-    await setDoc(sheetRef, { ...data, updatedAt: new Date().toISOString() }, { merge: true });
+    // Para antropometría, siempre creamos un nuevo registro en el historial.
+    if (sheetName === 'anthropometry' && savedBy) {
+      const cleanAnthroData: { [key: string]: any } = {};
+      const numericKeys = [
+        'weight', 'height', 'sittingHeight', 'armSpan', 
+        'skinfoldTriceps', 'skinfoldSubscapular', 'skinfoldSupraspinale', 'skinfoldAbdominal', 'skinfoldCalf',
+        'breadthWrist', 'breadthElbow', 'breadthKnee',
+        'girthArm', 'girthCalf', 'girthWaist', 'girthHip', 'age'
+      ];
+
+      Object.keys(data).forEach(key => {
+        const value = data[key];
+        if (value === undefined) return; // Ignorar completamente los campos no definidos
+
+        if (numericKeys.includes(key)) {
+          // Para campos numéricos, intentar convertir a número. Si no es válido (ej. ''), guardar null.
+          const parsed = parseFloat(value);
+          cleanAnthroData[key] = isNaN(parsed) ? null : parsed;
+        } else {
+          // Para campos de texto (sex, activityLevel), guardar null si está vacío.
+          cleanAnthroData[key] = value === '' ? null : value;
+        }
+      });
+
+      const historyCollectionRef = collection(db, 'users', clientId, 'anthropometryHistory');
+      const historySnapshot = await getDocs(historyCollectionRef);
+      const recordName = `Registro ${historySnapshot.size + 1}`;
+      const newRecordRef = doc(historyCollectionRef);
+
+      await setDoc(newRecordRef, {
+        ...cleanAnthroData,
+        id: newRecordRef.id,
+        name: recordName,
+        savedAt: new Date(),
+        savedBy: savedBy,
+      });
+    } else {
+      // Para otras fichas, mantenemos la lógica de sobreescritura con limpieza genérica.
+      const cleanData = { ...data };
+      Object.keys(cleanData).forEach(key => {
+        if (cleanData[key] === undefined || cleanData[key] === '') {
+          cleanData[key] = null;
+        }
+      });
+      const sheetRef = doc(db, 'users', clientId, 'sheets', sheetName);
+      await setDoc(sheetRef, { ...cleanData, updatedAt: new Date() }, { merge: true });
+    }
   } catch (error) {
     console.error(`Error saving ${sheetName}:`, error);
     throw error;
+  }
+};
+
+/**
+ * Elimina un registro de historial de antropometría de un cliente.
+ */
+export const deleteAnthropometryRecord = async (clientId: string, recordId: string): Promise<void> => {
+  try {
+    const recordRef = doc(db, 'users', clientId, 'anthropometryHistory', recordId);
+    await deleteDoc(recordRef);
+  } catch (error) {
+    console.error("Error deleting anthropometry record:", error);
+    throw error;
+  }
+};
+
+// --- CARDIO EXERCISE HISTORY ---
+
+/**
+ * Guarda una sesión de ejercicio cardiovascular realizada por un cliente.
+ */
+export const saveCardioExerciseSession = async (clientId: string, coachId: string, session: {
+  exerciseId: string;
+  exerciseName: string;
+  plannedDuration: number;
+  actualDuration: number;
+  plannedIntensity: string | number;
+  actualIntensity: string | number;
+  notes?: string;
+}): Promise<string> => {
+  try {
+    const sessionId = doc(collection(db, 'users', clientId, 'cardioHistory')).id;
+    const sessionData = {
+      ...session,
+      clientId,
+      coachId,
+      date: new Date().toISOString().split('T')[0],
+      time: new Date().toISOString().split('T')[1],
+      createdAt: new Date().toISOString(),
+    };
+
+    await setDoc(doc(db, 'users', clientId, 'cardioHistory', sessionId), sessionData);
+    return sessionId;
+  } catch (error) {
+    console.error("Error saving cardio exercise session:", error);
+    throw error;
+  }
+};
+
+/**
+ * Obtiene el historial de ejercicios cardiovasculares de un cliente.
+ */
+export const getCardioExerciseHistory = async (clientId: string): Promise<any[]> => {
+  try {
+    const historyRef = collection(db, 'users', clientId, 'cardioHistory');
+    const q = query(historyRef, orderBy('createdAt', 'desc'), limit(50));
+    const querySnapshot = await getDocs(q);
+    
+    const sessions: any[] = [];
+    querySnapshot.forEach((doc) => {
+      sessions.push({ id: doc.id, ...doc.data() });
+    });
+    
+    return sessions;
+  } catch (error) {
+    console.error("Error fetching cardio exercise history:", error);
+    return [];
+  }
+};
+
+/**
+ * Agrega retroalimentación del coach a una sesión de ejercicio cardiovascular.
+ */
+export const addCardioFeedback = async (clientId: string, sessionId: string, feedback: string): Promise<void> => {
+  try {
+    const sessionRef = doc(db, 'users', clientId, 'cardioHistory', sessionId);
+    await updateDoc(sessionRef, { 
+      feedback,
+      feedbackUpdatedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error("Error adding cardio feedback:", error);
+    throw error;
+  }
+};
+
+/**
+ * Obtiene estadísticas de cardio de un cliente (últimos 30 días).
+ */
+export const getCardioStats = async (clientId: string): Promise<{
+  totalSessions: number;
+  totalDuration: number;
+  avgIntensity: string;
+  lastSession?: any;
+}> => {
+  try {
+    const sessions = await getCardioExerciseHistory(clientId);
+    
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const recentSessions = sessions.filter(s => 
+      new Date(s.createdAt) >= thirtyDaysAgo
+    );
+    
+    const totalDuration = recentSessions.reduce((sum, s) => sum + (s.actualDuration || 0), 0);
+    const lastSession = recentSessions[0] || null;
+    
+    return {
+      totalSessions: recentSessions.length,
+      totalDuration,
+      avgIntensity: recentSessions.length > 0 ? 'Moderada' : 'N/A',
+      lastSession
+    };
+  } catch (error) {
+    console.error("Error getting cardio stats:", error);
+    return { totalSessions: 0, totalDuration: 0, avgIntensity: 'N/A' };
+  }
+};
+
+// ===== FUNCIONES PARA 1RM =====
+
+/**
+ * Calcula el 1RM usando todas las fórmulas de los autores y retorna el promedio
+ */
+export const calculate1RMAverage = (weightKg: number, reps: number): { [key: string]: number; average: number } => {
+  // Evitar divisiones por cero o valores inválidos
+  if (weightKg <= 0 || reps <= 0) return { average: 0, brzycki: 0, eppley: 0, lander: 0, mayhew: 0, wathen: 0, oConner: 0, lombardi: 0 };
+
+  // 1. Brzycki: 1MR = kg × 100 / (102,78 - 2,78 × Rep)
+  const brzycki = (weightKg * 100) / (102.78 - 2.78 * reps);
+
+  // 2. Eppley: 1MR = (1 + 0,033 × Rep) × Kg
+  const eppley = (1 + 0.033 * reps) * weightKg;
+
+  // 3. Lander: % 1MR = 101,3 - 2,67123 × Rep → 1MR = kg × 100 / (101,3 - 2,67123 × Rep)
+  const lander = (weightKg * 100) / (101.3 - 2.67123 * reps);
+
+  // 4. Mayhew: % 1MR = 52,2 + 41,9 × e^(-0,055 × Rep) → 1MR = 100 × kg / %1MR
+  const mayhewPercent = 52.2 + 41.9 * Math.exp(-0.055 * reps);
+  const mayhew = (100 * weightKg) / mayhewPercent;
+
+  // 5. Wathen: % MR = 48,8 + 53,8 × e^(-0,075 × Rep) → 1MR = 100 × kg / %1MR
+  const wathenPercent = 48.8 + 53.8 * Math.exp(-0.075 * reps);
+  const wathen = (100 * weightKg) / wathenPercent;
+
+  // 6. O'Conner: 1MR = Peso × (1 + 0,025 × Rep)
+  const oConner = weightKg * (1 + 0.025 * reps);
+
+  // 7. Lombardi: 1 MR = Kg × (Rep)^0,1
+  const lombardi = weightKg * Math.pow(reps, 0.1);
+
+  // Calcular promedio
+  const average = (brzycki + eppley + lander + mayhew + wathen + oConner + lombardi) / 7;
+
+  return {
+    brzycki: Math.round(brzycki * 100) / 100,
+    eppley: Math.round(eppley * 100) / 100,
+    lander: Math.round(lander * 100) / 100,
+    mayhew: Math.round(mayhew * 100) / 100,
+    wathen: Math.round(wathen * 100) / 100,
+    oConner: Math.round(oConner * 100) / 100,
+    lombardi: Math.round(lombardi * 100) / 100,
+    average: Math.round(average * 100) / 100
+  };
+};
+
+/**
+ * Guarda un registro de 1RM para un cliente
+ */
+export const saveOneRmRecord = async (clientId: string, record: any) => {
+  try {
+    const recordsRef = collection(db, `users/${clientId}/oneRmRecords`);
+    const newRecordRef = doc(recordsRef);
+    
+    await setDoc(newRecordRef, {
+      ...record,
+      calculationDate: new Date().toISOString()
+    });
+    
+    return newRecordRef.id;
+  } catch (error) {
+    console.error("Error saving 1RM record:", error);
+    throw error;
+  }
+};
+
+/**
+ * Obtiene todos los registros 1RM de un cliente
+ */
+export const getOneRmRecords = async (clientId: string): Promise<any[]> => {
+  try {
+    const recordsRef = collection(db, `users/${clientId}/oneRmRecords`);
+    const snapshot = await getDocs(recordsRef);
+    
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  } catch (error) {
+    console.error("Error getting 1RM records:", error);
+    return [];
+  }
+};
+
+/**
+ * Actualiza un registro 1RM existente
+ */
+export const updateOneRmRecord = async (clientId: string, recordId: string, updates: any) => {
+  try {
+    const recordRef = doc(db, `users/${clientId}/oneRmRecords`, recordId);
+    await updateDoc(recordRef, updates);
+  } catch (error) {
+    console.error("Error updating 1RM record:", error);
+    throw error;
+  }
+};
+
+/**
+ * Obtiene o crea el 1RM para un ejercicio específico
+ */
+export const getOneRmForExercise = async (clientId: string, exerciseId: string): Promise<any | null> => {
+  try {
+    const recordsRef = collection(db, `users/${clientId}/oneRmRecords`);
+    const q = query(recordsRef, where('exerciseId', '==', exerciseId));
+    const snapshot = await getDocs(q);
+    
+    if (snapshot.empty) return null;
+    
+    const doc = snapshot.docs[0];
+    return {
+      id: doc.id,
+      ...doc.data()
+    };
+  } catch (error) {
+    console.error("Error getting 1RM for exercise:", error);
+    return null;
   }
 };

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { getAllUsers } from '@/services/api/firestore';
 import { Admin, Coach, Client } from '@/types';
-import { Users, Dumbbell, TrendingUp, Search, Shield, ClipboardList, Database } from 'lucide-react';
+import { Users, Dumbbell, Search, Shield, Database, FileText, BarChart } from 'lucide-react';
 import { ClientDetail } from './ClientDetail';
 import { CoachDetail } from './CoachDetail';
 import { ClientPhysicalTests } from './ClientPhysicalTests';
@@ -59,7 +59,7 @@ export const AdminDashboard = () => {
   const admins = filteredUsers.filter(u => u.role === 'admin');
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white mb-1">Panel de Control</h1>
@@ -114,90 +114,114 @@ export const AdminDashboard = () => {
             </div>
           </div>
         </Card>
-        <Card onClick={() => setShowExerciseLib(true)} className="cursor-pointer hover:border-emerald-500/50 transition-all group">
-          <div className="flex items-start justify-between">
-            <div>
-              <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider group-hover:text-emerald-400">Base de Datos</h3>
-              <p className="text-lg font-bold text-white mt-2">Ejercicios y Máquinas</p>
-            </div>
-            <div className="p-3 bg-slate-800 rounded-lg group-hover:bg-emerald-500/20 transition-colors">
-              <Database className="w-6 h-6 text-slate-400 group-hover:text-emerald-500" />
-            </div>
+      </div>
+
+      {/* Main Grid: 2 Columns Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* MÓDULO 1: STAFF DE ENTRENADORES */}
+        <Card className="flex flex-col h-[500px] overflow-hidden p-0">
+          <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+             <div className="flex items-center gap-3">
+               <div className="p-2 bg-emerald-500/10 rounded-lg"><Dumbbell className="w-5 h-5 text-emerald-500" /></div>
+               <h2 className="text-lg font-bold text-white">Staff de Entrenadores</h2>
+             </div>
+             <span className="text-xs font-bold bg-slate-800 text-slate-400 px-3 py-1 rounded-full">{coaches.length} Activos</span>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+             {coaches.map(coach => (
+               <div key={coach.uid} onClick={() => setSelectedCoach(coach)} className="flex items-center gap-4 p-4 rounded-xl bg-slate-900/30 border border-slate-800 hover:border-emerald-500/50 hover:bg-slate-800 transition-all cursor-pointer group">
+                  <div className="w-10 h-10 rounded-full bg-emerald-900/30 flex items-center justify-center text-emerald-400 font-bold border border-emerald-500/20">
+                    {coach.firstName[0]}{coach.lastName[0]}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-white group-hover:text-emerald-400 transition-colors">{coach.firstName} {coach.lastName}</h3>
+                    <p className="text-xs text-slate-500">{coach.email}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-bold text-emerald-500">{coach.assignedClientIds?.length || 0}</span>
+                    <p className="text-[10px] text-slate-500 uppercase">Atletas</p>
+                  </div>
+               </div>
+             ))}
+             {coaches.length === 0 && !loading && <div className="text-center text-slate-500 py-10 italic">No hay entrenadores registrados.</div>}
           </div>
         </Card>
-      </div>
 
-      {/* Sección de Entrenadores */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-          <Dumbbell className="w-5 h-5 text-emerald-500" />
-          Staff de Entrenadores
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {coaches.map(coach => (
-            <Card 
-              key={coach.uid} 
-              onClick={() => setSelectedCoach(coach)}
-              className="flex items-center gap-4 hover:border-emerald-500/50 cursor-pointer group"
-            >
-              <div className="w-12 h-12 rounded-full bg-emerald-900/30 flex items-center justify-center text-emerald-400 font-bold text-lg border border-emerald-500/20">
-                {coach.firstName[0]}{coach.lastName[0]}
-              </div>
-              <div>
-                <h3 className="font-medium text-white group-hover:text-emerald-400 transition-colors">{coach.firstName} {coach.lastName}</h3>
-                <p className="text-xs text-slate-500">{coach.email}</p>
-                <p className="text-[10px] text-emerald-500 mt-1 uppercase tracking-wide font-bold">{coach.assignedClientIds?.length || 0} Atletas Asignados</p>
-              </div>
-            </Card>
-          ))}
-          {coaches.length === 0 && !loading && <p className="text-slate-500 text-sm italic col-span-full">No hay entrenadores registrados.</p>}
-        </div>
-      </div>
-
-      {/* Sección de Clientes */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-          <Users className="w-5 h-5 text-blue-500" />
-          Atletas y Clientes
-        </h2>
-        <div className="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden">
-          <div className="grid grid-cols-1 divide-y divide-slate-800">
-            {clients.map(client => (
-              <div 
-                key={client.uid} 
-                onClick={() => setSelectedClient(client)}
-                className="p-4 flex items-center justify-between hover:bg-slate-800/50 transition-colors cursor-pointer group"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-blue-900/30 flex items-center justify-center text-blue-400 font-bold text-sm border border-blue-500/20">
+        {/* MÓDULO 2: ATLETAS Y CLIENTES */}
+        <Card className="flex flex-col h-[500px] overflow-hidden p-0">
+          <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+             <div className="flex items-center gap-3">
+               <div className="p-2 bg-blue-500/10 rounded-lg"><Users className="w-5 h-5 text-blue-500" /></div>
+               <h2 className="text-lg font-bold text-white">Atletas y Clientes</h2>
+             </div>
+             <span className="text-xs font-bold bg-slate-800 text-slate-400 px-3 py-1 rounded-full">{clients.length} Activos</span>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+             {clients.map(client => (
+               <div key={client.uid} onClick={() => setSelectedClient(client)} className="flex items-center gap-4 p-4 rounded-xl bg-slate-900/30 border border-slate-800 hover:border-blue-500/50 hover:bg-slate-800 transition-all cursor-pointer group">
+                  <div className="w-10 h-10 rounded-full bg-blue-900/30 flex items-center justify-center text-blue-400 font-bold border border-blue-500/20">
                     {client.firstName[0]}{client.lastName[0]}
                   </div>
-                  <div>
-                    <h3 className="font-medium text-white text-sm">{client.firstName} {client.lastName}</h3>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-white group-hover:text-blue-400 transition-colors">{client.firstName} {client.lastName}</h3>
                     <p className="text-xs text-slate-500">{client.email}</p>
                   </div>
-                </div>
-                <div className="flex items-center gap-4">
                   <div className="text-right hidden sm:block">
-                    <p className="text-[10px] text-slate-400 uppercase tracking-wider">Coach Asignado</p>
-                    <p className="text-xs text-white font-medium">
-                      {client.assignedCoachId ? 
-                        (users.find(u => u.uid === client.assignedCoachId)?.firstName || 'Desconocido') 
-                        : <span className="text-yellow-500">Sin asignar</span>
-                      }
+                    <p className="text-[10px] text-slate-500 uppercase">Coach</p>
+                    <p className="text-xs text-slate-300">
+                      {client.assignedCoachId ? (users.find(u => u.uid === client.assignedCoachId)?.firstName || '...') : <span className="text-yellow-500">Sin asignar</span>}
                     </p>
                   </div>
-                  <button className="p-2 bg-slate-800 group-hover:bg-blue-600 rounded-lg text-slate-400 group-hover:text-white transition-all">
-                    <TrendingUp className="w-4 h-4" />
-                  </button>
+               </div>
+             ))}
+             {clients.length === 0 && !loading && <div className="text-center text-slate-500 py-10 italic">No hay atletas registrados.</div>}
+          </div>
+        </Card>
+
+        {/* MÓDULO 3: BASE DE DATOS */}
+        <Card onClick={() => setShowExerciseLib(true)} className="flex flex-col h-[200px] cursor-pointer group hover:border-slate-600 transition-all relative overflow-hidden p-0">
+           <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+             <Database className="w-32 h-32 text-slate-400" />
+           </div>
+           <div className="p-5 flex items-center gap-3 relative z-10">
+             <div className="p-2 bg-slate-800 rounded-lg text-slate-400 group-hover:text-white transition-colors"><Database className="w-5 h-5" /></div>
+             <h2 className="text-lg font-bold text-white">Base de Datos</h2>
+           </div>
+           <div className="flex-1 flex items-center justify-center gap-6 px-6 pb-4 relative z-10">
+              <div className="w-14 h-14 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg flex-shrink-0">
+                <Database className="w-7 h-7 text-slate-400" />
+              </div>
+              <div className="text-left">
+                <h3 className="text-lg font-bold text-white">Catálogo Maestro</h3>
+                <p className="text-slate-400 text-xs mt-1">Administra ejercicios, máquinas y mantenimiento.</p>
+              </div>
+           </div>
+        </Card>
+
+        {/* MÓDULO 4: INFORMES (NUEVO) */}
+        <Card className="flex flex-col h-[200px] cursor-pointer group hover:border-purple-500/50 transition-all relative overflow-hidden p-0">
+           <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+             <BarChart className="w-32 h-32 text-purple-500" />
+           </div>
+           <div className="p-5 flex items-center gap-3 relative z-10">
+             <div className="p-2 bg-purple-500/10 rounded-lg text-purple-500"><FileText className="w-5 h-5" /></div>
+             <h2 className="text-lg font-bold text-white">Informes</h2>
+           </div>
+           <div className="flex-1 flex items-center justify-center gap-6 px-6 pb-4 relative z-10">
+              <div className="w-14 h-14 rounded-2xl bg-purple-900/20 border border-purple-500/20 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg flex-shrink-0">
+                <BarChart className="w-7 h-7 text-purple-500" />
+              </div>
+              <div className="text-left">
+                <h3 className="text-lg font-bold text-white">Reportes Generales</h3>
+                <p className="text-slate-400 text-xs mt-1">Análisis de rendimiento y métricas.</p>
+                <div className="mt-2 inline-block px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-[9px] font-bold text-purple-400 uppercase tracking-wider">
+                  Próximamente
                 </div>
               </div>
-            ))}
-            {clients.length === 0 && !loading && (
-              <div className="p-8 text-center text-slate-500 text-sm">No se encontraron atletas.</div>
-            )}
-          </div>
-        </div>
+           </div>
+        </Card>
+
       </div>
     </div>
   );

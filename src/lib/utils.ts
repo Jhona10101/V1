@@ -1,8 +1,4 @@
-import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-// Helper para combinar clases de Tailwind de forma segura (si decides instalar clsx y tailwind-merge después)
-// Por ahora usaremos una versión simple si no están instaladas, pero dejo la estructura lista.
+// Helper para combinar clases de Tailwind de forma simple
 export function cn(...inputs: (string | undefined | null | false)[]) {
   return inputs.filter(Boolean).join(" ");
 }

@@ -8,27 +8,46 @@ export const useAuthListener = () => {
   const { setUser, setLoading } = useUserStore();
 
   useEffect(() => {
+    let isMounted = true;
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        // Usuario autenticado en Firebase. Ahora buscamos su perfil en Firestore.
-        setLoading(true);
-        const userProfile = await getUserProfile(firebaseUser.uid);
-        if (userProfile) {
-          setUser(userProfile);
+      if (!isMounted) return;
+
+      try {
+        if (firebaseUser) {
+          // Usuario autenticado en Firebase. Ahora buscamos su perfil en Firestore.
+          setLoading(true);
+          const userProfile = await getUserProfile(firebaseUser.uid);
+          
+          if (isMounted) {
+            if (userProfile) {
+              setUser(userProfile);
+            } else {
+              // Caso borde: usuario existe en Auth pero no en Firestore.
+              // Aquí podrías redirigir a una página de finalización de registro.
+              setUser(null);
+            }
+            setLoading(false);
+          }
         } else {
-          // Caso borde: usuario existe en Auth pero no en Firestore.
-          // Aquí podrías redirigir a una página de finalización de registro.
-          setUser(null);
+          // No hay usuario autenticado.
+          if (isMounted) {
+            setUser(null);
+            setLoading(false);
+          }
         }
-        setLoading(false);
-      } else {
-        // No hay usuario autenticado.
-        setUser(null);
-        setLoading(false);
+      } catch (error) {
+        if (isMounted) {
+          console.error('Error in auth listener:', error);
+          setLoading(false);
+        }
       }
     });
 
     // Limpiar el listener cuando el componente se desmonte.
-    return () => unsubscribe();
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, [setUser, setLoading]);
 };

@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAnthropometricCalculations } from '../hooks/useAnthropometricCalculations';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { calculateAnthropometricData } from '../hooks/useAnthropometricCalculations';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
+import { Label } from '@/components/ui/Label';
 
 // Valores iniciales del formulario para un nuevo registro
 const initialState = {
@@ -19,16 +19,14 @@ const initialState = {
 export const AntropometriaForm = () => {
   const [measurements, setMeasurements] = useState(initialState);
 
-  const { imc, bodyFatPercentage, leanMassKg } = useAnthropometricCalculations(
-    measurements.weightKg,
-    measurements.heightCm,
-    {
-      triceps: measurements.tricepsSkinfold,
-      subscapular: measurements.subscapularSkinfold,
-      suprailiac: measurements.suprailiacSkinfold,
-      biceps: measurements.bicepsSkinfold,
-    }
-  );
+  const calculatedData = calculateAnthropometricData({
+    weight: measurements.weightKg,
+    height: measurements.heightCm,
+    skinfoldTriceps: measurements.tricepsSkinfold,
+    skinfoldSubscapular: measurements.subscapularSkinfold,
+    skinfoldSupraspinale: measurements.suprailiacSkinfold,
+    skinfoldBiceps: measurements.bicepsSkinfold,
+  });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, valueAsNumber } = e.target;
@@ -78,15 +76,15 @@ export const AntropometriaForm = () => {
         <CardContent className="space-y-6">
           <div className="text-center">
             <p className="text-sm font-medium text-slate-400">IMC</p>
-            <p className="text-4xl font-bold tracking-tighter">{imc}</p>
+            <p className="text-4xl font-bold tracking-tighter">{calculatedData.bmi.toFixed(1)}</p>
           </div>
           <div className="text-center">
             <p className="text-sm font-medium text-slate-400">% Grasa Corporal</p>
-            <p className="text-4xl font-bold tracking-tighter">{bodyFatPercentage}%</p>
+            <p className="text-4xl font-bold tracking-tighter">{calculatedData.percentFat.toFixed(1)}%</p>
           </div>
           <div className="text-center">
             <p className="text-sm font-medium text-slate-400">Masa Magra</p>
-            <p className="text-4xl font-bold tracking-tighter">{leanMassKg} kg</p>
+            <p className="text-4xl font-bold tracking-tighter">{calculatedData.leanMass.toFixed(1)} kg</p>
           </div>
         </CardContent>
       </Card>

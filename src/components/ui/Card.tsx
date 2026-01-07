@@ -13,3 +13,19 @@ export const Card: React.FC<CardProps> = ({ children, className = '', onClick })
     </div>
   );
 };
+
+export const CardHeader: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
+  <div className={`mb-4 ${className}`}>{children}</div>
+);
+
+export const CardTitle: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
+  <h3 className={`text-lg font-semibold ${className}`}>{children}</h3>
+);
+
+export const CardContent: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
+  <div className={className}>{children}</div>
+);
+
+export const CardDescription: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
+  <p className={`text-sm text-slate-400 ${className}`}>{children}</p>
+);

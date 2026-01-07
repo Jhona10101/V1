@@ -21,7 +21,7 @@ import {
   ChevronDown, 
   ShieldCheck,
   Chrome,
-  User
+  
 } from 'lucide-react';
 
 export const Login = () => {
@@ -86,6 +86,13 @@ export const Login = () => {
 
     try {
       if (isLogin) {
+        // validación básica antes de llamar a Firebase
+        if (!email || !password) {
+          setError('Ingrese email y contraseña.');
+          setLoading(false);
+          return;
+        }
+
         await signInWithEmailAndPassword(auth, email, password);
         if (auth.currentUser) {
              const userProfile = await getUserProfile(auth.currentUser.uid);
@@ -121,11 +128,13 @@ export const Login = () => {
         if (userProfile) setUser(userProfile);
       }
     } catch (err: any) {
-      console.error(err);
-      if (err.code === 'auth/invalid-credential') setError('Correo o contraseña incorrectos.');
-      else if (err.code === 'auth/email-already-in-use') setError('Este correo ya está registrado.');
-      else if (err.code === 'auth/weak-password') setError('La contraseña es muy débil.');
-      else setError('Ocurrió un error. Inténtalo de nuevo.');
+      console.error('Firebase auth error:', err);
+      const code = err?.code || err?.message || 'unknown';
+      if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') setError('Correo o contraseña incorrectos.');
+      else if (code === 'auth/email-already-in-use') setError('Este correo ya está registrado.');
+      else if (code === 'auth/weak-password') setError('La contraseña es muy débil.');
+      else if (code === 'auth/invalid-email') setError('Email inválido.');
+      else setError(String(err?.message || 'Ocurrió un error. Inténtalo de nuevo.'));
     } finally {
       setLoading(false);
     }
