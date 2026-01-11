@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/Card';
-import { Calendar, TrendingUp, MessageCircle, Play, ChevronRight, ChevronLeft, Dumbbell, ArrowLeft, Clock, PlayCircle, PauseCircle, SkipForward, CheckCircle2, X, ChevronDown, ChevronUp, Trophy, AlertTriangle, RefreshCw, PlusCircle, Zap, Hourglass, History, Eye, Activity, Search, Youtube } from 'lucide-react';
+import { Calendar, TrendingUp, MessageCircle, Play, ChevronRight, ChevronLeft, Dumbbell, ArrowLeft, Clock, PlayCircle, PauseCircle, SkipForward, CheckCircle2, X, ChevronDown, ChevronUp, Trophy, AlertTriangle, RefreshCw, PlusCircle, Zap, Hourglass, History, Eye, Activity, Search, Youtube, Pencil } from 'lucide-react';
 import { useUserStore } from '@/store/user.store';
 import { doc, onSnapshot, setDoc, collection, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import UpdateProfileModal from '@/components/features/user-profile/UpdateProfileModal';
 
 // Utilities for week calculations (Monday as week start)
 const getWeekStart = (d: Date) => {
@@ -765,6 +766,22 @@ export const ClientDashboard = () => {
   const [currentWeekId, setCurrentWeekId] = useState(getWeekStartISO(new Date()));
   const [weekSessions, setWeekSessions] = useState<any[]>([]);
   const userStore = useUserStore();
+  const [isProfileModalOpen, setProfileModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (userStore.user?.uid) {
+      const unsub = onSnapshot(doc(db, "users", userStore.user.uid), (doc) => {
+        const userData = doc.data();
+        if (userData) {
+          const { phone, height, weight, age, goal } = userData;
+          if (!phone || !height || !weight || !age || !goal) {
+            setProfileModalOpen(true);
+          }
+        }
+      });
+      return () => unsub();
+    }
+  }, [userStore.user?.uid]);
 
   // Escuchar rutinas guardadas (current / next) para el usuario y actualizar el weeklyPlan
   useEffect(() => {
@@ -1058,10 +1075,21 @@ export const ClientDashboard = () => {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
+      <UpdateProfileModal isOpen={isProfileModalOpen} onClose={() => setProfileModalOpen(false)} />
       {/* Bienvenida */}
-      <div>
-        <h1 className="text-3xl font-bold text-white">Hola, Atleta</h1>
-        <p className="text-slate-400">Aquí tienes tu resumen semanal y planificación.</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Hola, Atleta</h1>
+          <p className="text-slate-400">Aquí tienes tu resumen semanal y planificación.</p>
+        </div>
+        <button 
+          onClick={() => setProfileModalOpen(true)} 
+          className="flex items-center gap-2 px-4 py-2 bg-slate-800 rounded-full text-slate-300 hover:text-white hover:bg-yellow-600 transition-colors group border border-slate-700" 
+          aria-label="Actualizar perfil"
+        >
+          <Pencil className="w-4 h-4 text-slate-400 group-hover:text-white transition-colors" />
+          <span className="text-sm font-medium">Actualiza tus datos</span>
+        </button>
       </div>
 
       {/* Grid Principal de 4 Módulos */}
@@ -1160,30 +1188,26 @@ export const ClientDashboard = () => {
           </div>
         </Card>
 
-        {/* MÓDULO 4: SUGERENCIAS Y TUTORIALES */}
+        {/* MÓDULO 4: VIDEOS TUTORIALES */}
         <Card onClick={() => setViewMode('tutorials')} className="relative overflow-hidden group cursor-pointer hover:border-yellow-500/50 transition-all">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-yellow-500/20 rounded-lg text-yellow-400">
-              <MessageCircle className="w-6 h-6" />
-            </div>
-            <h2 className="text-xl font-bold text-white">Tutoriales</h2>
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <Youtube className="w-24 h-24 text-yellow-500" />
           </div>
-          
-          <div className="space-y-4">
-            <div className="p-5 bg-slate-800/80 rounded-xl border-l-4 border-yellow-500 shadow-lg">
-              <p className="text-xs text-yellow-500 font-bold uppercase mb-2 flex items-center gap-2"><Zap className="w-3 h-3" /> Enfoque de la Semana</p>
-              <p className="text-lg font-bold text-white leading-tight">
-                "{currentRoutineDoc?.name || 'Sin Plan Asignado'}"
-              </p>
-              <p className="text-sm text-slate-400 mt-2 italic">
-                Hoy: <span className="text-white not-italic font-medium">{weeklyPlan.find(d => d.day === ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][new Date().getDay()])?.title || 'Descanso'}</span>
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-yellow-500/20 rounded-lg text-yellow-400">
+                <Youtube className="w-6 h-6" />
+              </div>
+              <h2 className="text-xl font-bold text-white">Videos Tutoriales</h2>
+            </div>
+            <p className="text-slate-300 mb-6">Perfecciona tu técnica y aprende nuevos ejercicios.</p>
+            <div className="p-4 bg-yellow-900/20 border border-yellow-500/20 rounded-xl">
+              <p className="text-sm text-yellow-200">
+                Accede a nuestra biblioteca de videos para asegurar una ejecución perfecta.
               </p>
             </div>
-            
-            <button className="w-full flex items-center justify-center gap-2 p-3 bg-slate-800 hover:bg-yellow-600 hover:text-white text-slate-300 rounded-lg transition-colors group/btn font-medium mt-4">
-              <Play className="w-4 h-4 text-yellow-500 group-hover/btn:text-white" />
-              Ver Tutoriales de Hoy
-              <ChevronRight className="w-4 h-4 text-slate-500 group-hover/btn:text-white" />
+            <button onClick={(e) => { e.stopPropagation(); setViewMode('tutorials'); }} className="mt-6 w-full py-2 bg-slate-800 hover:bg-yellow-600 hover:text-white text-slate-300 rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
+              Ver Videos <ChevronRight className="w-4 h-4" />
             </button>
           </div>
         </Card>

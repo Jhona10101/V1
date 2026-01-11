@@ -579,6 +579,10 @@ export const ClientDetail = ({ client, onBack, readOnly = false, onUpdate }: Cli
   const [testsData, setTestsData] = useState<any>({});
 
   useEffect(() => {
+    setPersonalData(client);
+  }, [client]);
+
+  useEffect(() => {
     const loadData = async () => {
       if (!client.uid) return;
       try {
@@ -642,7 +646,7 @@ export const ClientDetail = ({ client, onBack, readOnly = false, onUpdate }: Cli
         // Prepare tests data
         let testsDataToSave = { ...testsData };
         if (anthroData.activityLevel === 'Sedentario') {
-          const fcm = 200; // Default FCM for sedentary
+          const fcm = 220 - (personalData.age || 0); // Default FCM for sedentary
           testsDataToSave = { ...testsDataToSave, fcm };
         }
         const saveTestsPromise = saveClientSheet(client.uid, 'physicalTests', testsDataToSave);
@@ -782,15 +786,15 @@ export const ClientDetail = ({ client, onBack, readOnly = false, onUpdate }: Cli
                 </label>
                 {isEditing ? (
                   <textarea
-                    name="goals"
-                    value={(personalData as any).goals || ''}
+                    name="goal"
+                    value={personalData.goal || ''}
                     onChange={handlePersonalChange}
                     rows={3}
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white text-sm focus:border-emerald-500 outline-none transition-colors resize-none"
                   />
                 ) : (
                   <div className="p-3 bg-slate-900/50 rounded-lg border border-slate-800/50 text-slate-200 min-h-[80px]">
-                    {(personalData as any).goals || <span className="text-slate-600 italic">No especificado</span>}
+                    {personalData.goal || <span className="text-slate-600 italic">No especificado</span>}
                   </div>
                 )}
               </div>
@@ -921,7 +925,7 @@ export const ClientDetail = ({ client, onBack, readOnly = false, onUpdate }: Cli
                   isEditing={false}
                   label="Frecuencia Cardiaca Máxima (FCM) (Calculado)"
                   name="fcm"
-                  state={{ fcm: testsData.fcm || 200 }}
+                  state={{ fcm: (220 - (personalData.age || 0)) }}
                   suffix="ppm"
                 />
               )}
@@ -937,7 +941,7 @@ export const ClientDetail = ({ client, onBack, readOnly = false, onUpdate }: Cli
               let fcRep: number | null = null;
               
               if (anthroData.activityLevel === 'Sedentario') {
-                fcMax = testsData.fcm || 200;
+                fcMax = (220 - (personalData.age || 0));
               } else if (anthroData.activityLevel === 'Deportista' && testsData.heartRate1Min) {
                 fcMax = parseInt(testsData.heartRate1Min);
               }

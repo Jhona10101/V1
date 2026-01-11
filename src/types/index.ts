@@ -25,9 +25,11 @@ export interface Coach extends BaseUser {
 export interface Client extends BaseUser {
   role: 'client';
   assignedCoachId: string; // UID del entrenador asignado
-  anthropometricDataId: string;
-  oneRmSheetId: string;
-  personalSheetId: string;
+  phone?: string;
+  height?: number;
+  weight?: number;
+  age?: number;
+  goal?: string;
 }
 
 // --- Fichas Técnicas ---

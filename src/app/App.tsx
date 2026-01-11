@@ -1,6 +1,7 @@
 import { useAuthListener } from "@/hooks/useAuthListener";
 import { useUserStore } from "@/store/user.store";
 import { AppRouter } from "./Router"; // Importamos nuestro router
+import Toast from "@/components/ui/Toast";
 
 const SplashScreen = () => (
   <div className="flex h-screen w-full items-center justify-center bg-slate-950 text-white">
@@ -21,7 +22,12 @@ function App() {
   }
   
   // Una vez que la carga inicial termina, el Router se encarga de todo.
-  return <AppRouter />;
+  return (
+    <>
+      <AppRouter />
+      <Toast />
+    </>
+  );
 }
 
 export default App;
